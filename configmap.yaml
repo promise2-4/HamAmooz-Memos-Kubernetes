@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: memos-config
+  namespace: memos
+data:
+  POSTGRES_DB: memos
+  POSTGRES_USER: memos
+  MEMOS_DRIVER: postgres
+  MEMOS_PORT: "5230"
+  MEMOS_INSTANCE_URL: "http://hemmasian.osdl.ir"

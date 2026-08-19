@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: memos-data
+  namespace: memos
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memos
+  namespace: memos
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: memos
+
+  template:
+    metadata:
+      labels:
+        app: memos
+
+    spec:
+      containers:
+        - name: memos
+          image: neosmemo/memos:stable
+
+          ports:
+            - name: http
+              containerPort: 5230
+
+          env:
+            - name: MEMOS_DRIVER
+              valueFrom:
+                configMapKeyRef:
+                  name: memos-config
+                  key: MEMOS_DRIVER
+
+            - name: MEMOS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: memos-config
+                  key: MEMOS_PORT
+
+            - name: MEMOS_INSTANCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: memos-config
+                  key: MEMOS_INSTANCE_URL
+
+            - name: MEMOS_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: memos-secret
+                  key: MEMOS_DSN
+
+          volumeMounts:
+            - name: memos-data
+              mountPath: /var/opt/memos
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5230
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5230
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+      volumes:
+        - name: memos-data
+          persistentVolumeClaim:
+            claimName: memos-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memos
+  namespace: memos
+spec:
+  selector:
+    app: memos
+
+  ports:
+    - name: http
+      port: 5230
+      targetPort: 5230
+
+  type: ClusterIP
